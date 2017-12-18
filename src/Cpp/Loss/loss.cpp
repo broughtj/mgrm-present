@@ -64,10 +64,10 @@ int main()
 	{
 		loss(i) = ProfitLossFunction(data, hstar(i));
 		vol(i) = VolatilityLossFunction(data, hstar(i));
-		//std::cout << hstar(i) << ", " << loss(i) << "," << vol(i) << std::endl;
+		std::cout << hstar(i) << ", " << loss(i) << "," << vol(i) << std::endl;
 	}
 
-	loss.save("oil-historical.csv", arma::csv_ascii);
+	//loss.save("oil-historical.csv", arma::csv_ascii);
 	
 
 	return 0;
