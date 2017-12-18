@@ -97,7 +97,7 @@ arma::vec FixedHedgeRatios(const double beg = 0.0, const double end = 1.0, const
 int main()
 {
 	arma::mat data;
-	data.load("gas-ret.csv", arma::csv_ascii);
+	data.load("oil-ret.csv", arma::csv_ascii);
 	arma::vec hstar = FixedHedgeRatios();
 	auto nrows = hstar.n_elem;
 
@@ -118,8 +118,8 @@ int main()
 		}
 	}
 
-	prf.save("gas-profit.csv", arma::csv_ascii);
-	vol.save("gas-volatility.csv", arma::csv_ascii);
+	prf.save("oil-profit.csv", arma::csv_ascii);
+	vol.save("oil-volatility.csv", arma::csv_ascii);
 
 
 	return 0;
