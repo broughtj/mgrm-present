@@ -101,7 +101,7 @@ int main()
 	arma::vec hstar = FixedHedgeRatios();
 	auto nrows = hstar.n_elem;
 
-	const int B = 10000;
+	const int B = 2000;
 	arma::mat prf(nrows, B);
 	arma::mat vol(nrows, B);
 	arma::mat path;
@@ -118,6 +118,8 @@ int main()
 		}
 	}
 
+	prf.save("gas-profit.csv", arma::csv_ascii);
+	vol.save("gas-volatility.csv", arma::csv_ascii);
 
 
 	return 0;
