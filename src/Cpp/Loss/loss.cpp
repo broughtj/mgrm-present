@@ -43,7 +43,7 @@ double VolatilityLossFunction(arma::mat& dat, double hstar)
 int main()
 {
 	arma::mat data;
-	data.load("gas-ret.csv", arma::csv_ascii);
+	data.load("oil-ret.csv", arma::csv_ascii);
 	//arma::vec hstar = arma::linspace<arma::vec>(0.0, 1.0, 0.01);
 	//arma::vec hstar = arma::regspace<arma::vec>(0.0, 0.01, 1.0);
 	//auto num = hstar.n_elem;
@@ -64,8 +64,10 @@ int main()
 	{
 		loss(i) = ProfitLossFunction(data, hstar(i));
 		vol(i) = VolatilityLossFunction(data, hstar(i));
-		std::cout << hstar(i) << ", " << loss(i) << "," << vol(i) << std::endl;
+		//std::cout << hstar(i) << ", " << loss(i) << "," << vol(i) << std::endl;
 	}
+
+	loss.save("oil-historical.csv", arma::csv_ascii);
 	
 
 	return 0;
