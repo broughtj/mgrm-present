@@ -1,0 +1,179 @@
+---
+title: "Hedging with Futures"
+author: "Tyler J. Brough, Ph.D."
+date: "December 9, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Introduction
+
+**Short Hedge:** a hedge that involves a short position in futures contracts. A short hedge is appropriate when the hedger already owns as asset and expects to sell it at some time in the future.
+
+**Long Hedge:** a hedge that involves a long position in futures contracts. A long hedge is appropriate when a hedger knows it will have to purchase a certain asset in the future and wants to lock in the price now.
+
+## The Minimum-Variance Hedge
+
+The minimum-variance hedge is given by the following:
+
+$$
+h^{\ast} = \rho \frac{\sigma_{s}}{\sigma_{f}}
+$$
+where $\rho$ is the correlation between the spot and futures prices.
+
+
+This can be most efficiently estimated via OLS regression, since:
+
+$$
+\begin{aligned}
+\hat{\beta} &= \frac{Cov(s,f)}{Var(f)} \\
+            &= \frac{\rho \sigma_{s} \sigma_{f}}{\sigma_{f} \sigma_{f}} \\
+            &= \rho \frac{\sigma_{s}}{\sigma_{f}}
+\end{aligned}
+$$
+
+
+## The Simple Fixed 1-for-1 Hedge
+
+The simplest hedge is the fixed one-for-one hedge ratio that was used by MGRM. This simple hedge sets $h = 1$. That is for every unit of the underlying asset the risk manager hedges with futures in exactly the same amount of units (either short or long).
+
+
+## MGRM's Hedging Strategy
+
+Let's first estimate the risk-minimizing hedge ratio as a benchmark. 
+
+Let's start with the month that the program began in December, 1991. 
+
+```{R}
+basePath <- "/home/brough/USU/Research/Projects/local/MGRM"
+srcDir <- paste(basePath, "/src/R", sep="")
+datDir <- paste(basePath, "/data/December/", sep="")
+setwd(srcDir)
+```
+
+```{R}
+## Read in the data for heating oil
+infile1 <- paste(datDir, "heatingoil-spot.csv", sep="")
+ho.s.raw <- read.csv(infile1, sep=",", header=T)
+names(ho.s.raw) <- c("Date", "Spot")
+ho.s.raw$Date <- as.Date(ho.s.raw$Date, "%Y-%m-%d")
+
+infile2 <- paste(datDir, "heatingoil-futures.csv", sep="")
+ho.f.raw <- read.csv(infile2, sep=",", header=T)
+names(ho.f.raw) <- c("Date", "Futures")
+ho.f.raw$Date <- as.Date(ho.f.raw$Date, "%Y-%m-%d")
+
+## Merge the datasets
+oil.raw <- merge(ho.s.raw, ho.f.raw, by="Date")
+oil.raw <- oil.raw[order(oil.raw$Date), ]
+oil.raw$Basis <- log(oil.raw$Futures) - log(oil.raw$Spot)
+head(oil.raw)
+tail(oil.raw)
+```
+
+We will now subset the data and perform the statistical analysis.
+
+```{R}
+## Subset the data
+begDate <- as.Date("1990-11-30", "%Y-%m-%d")
+endDate <- as.Date("1991-12-30", "%Y-%m-%d")
+ind <- (oil.raw$Date >= begDate & oil.raw$Date <= endDate)
+oil.sub <- oil.raw[ind, ]
+
+## Take a Peak
+head(oil.sub)
+tail(oil.sub)
+```
+
+Now calculate the minimum-variance hedge ratio.
+
+```{R}
+delS <- diff(oil.sub$Spot)
+delF <- diff(oil.sub$Futures)
+fit <- lm(delS ~ delF)
+summary(fit)
+```
+
+What if we use log-differences instead of price level differences?
+
+```{R}
+delS <- diff(log(oil.sub$Spot))
+delF <- diff(log(oil.sub$Futures))
+fit <- lm(delS ~ delF)
+summary(fit)
+```
+
+Let's see how the minimum-variance hedge ratio changes over time.
+
+```{R}
+## Make a function to take in data of appropriate period and output the mv hedge ratio
+minvarHedgeRatio <- function(dat)
+{
+  delS <- diff(dat$Spot)
+  delF <- diff(dat$Futures)
+  fit <- lm(delS ~ delF)
+  hr <- coef(fit)[2]
+  return(hr)
+}
+
+addMonth <- function(date, n)
+{
+  return(seq(from=date, by=paste(n, "months"), length=2)[2])
+}
+
+lastDate <- as.Date("2001-11-30", "%Y-%m-%d")
+ind <- (oil.raw$Date >= begDate & oil.raw$Date <= lastDate)
+oil.full <- oil.raw[ind, ]
+head(oil.full)
+tail(oil.full)
+nrow(oil.full)
+```
+
+Okay. Down to business.
+
+```{R}
+dates <- seq(from=endDate, to=lastDate, by="month")
+nper <- length(dates)
+
+indBeg <- begDate
+indEnd <- endDate
+hr <- rep(0, nper)
+
+for(i in 1:nper)
+{
+  ind <- (oil.full$Date >= indBeg & oil.full$Date <= indEnd)
+  oil.tmp <- oil.full[ind, ]
+  hr[i] <- minvarHedgeRatio(oil.tmp)
+  indBeg <- addMonth(indBeg, 1)
+  indEnd <- addMonth(indEnd, 1)
+}
+summary(hr)
+```
+
+Let's plot the time series of hedge ratios.
+
+```{R}
+dm <- data.frame(Date=dates, HedgeRatio=hr)
+plot(HedgeRatio ~ Date, dm, xaxt="n", type="l")
+axis(1, dm$Date, format(dm$Date, "%b-%Y"), cex.axis = .7)
+```
+
+Plot the time series of basis
+
+```{R}
+plot(Basis ~ Date, oil.full, xaxt="n", type="l")
+axis(1, oil.full$Date, format(oil.full$Date, "%b-%Y"), cex.axis = .7)
+```
+
+Something weird is happening between Jun-1999 and Sep-2000. Let's check it out.
+
+Note: turns out there were extremely cold temperatures in the north east and there was a resulting heating oil shortfall during Jan - Feb, 2000.
+
+```{R}
+beg <- as.Date("2000-01-01", "%Y-%m-%d")
+end <- as.Date("2000-03-01", "%Y-%m-%d")
+ind <- (oil.full$Date >= beg & oil.full$Date <= end)
+oil.eh <- oil.full[ind, ]
+oil.eh
+```
